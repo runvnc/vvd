@@ -102,6 +102,47 @@
     }
   }
 
+  /**
+   * Convert parsed VVD data back to VVD text source.
+   * @param {{ palette: Object, defs: Object, commands: Array }} parsed
+   * @returns {string}
+   */
+  VVDParser.toSource = function(parsed) {
+    const lines = ['VVD1'];
+
+    // Palette
+    for (const [id, hex] of Object.entries(parsed.palette)) {
+      lines.push('PAL ' + id + ', ' + hex);
+    }
+
+    if (Object.keys(parsed.palette).length > 0) lines.push('');
+
+    // Definitions
+    for (const [id, cmds] of Object.entries(parsed.defs)) {
+      lines.push('DEF ' + id);
+      for (const dc of cmds) {
+        lines.push('  ' + dc.cmd + ' ' + dc.args.join(', '));
+      }
+      lines.push('END');
+      lines.push('');
+    }
+
+    // Scene commands
+    for (const sc of parsed.commands) {
+      if (sc.cmd === 'TXT') {
+        var str = sc.args[0];
+        var rest = sc.args.slice(1);
+        lines.push('TXT "' + str + '", ' + rest.join(', '));
+      } else if (sc.cmd === 'INC') {
+        lines.push('INC "' + sc.args[0] + '"');
+      } else {
+        lines.push(sc.cmd + ' ' + sc.args.join(', '));
+      }
+    }
+
+    return lines.join('\n');
+  };
+
   // ─── VVDRenderer ─────────────────────────────────────────────────────
   // Renders parsed VVD data onto a canvas.
 

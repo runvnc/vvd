@@ -35,8 +35,10 @@ header select { background: #0f3460; color: #e0e0e0; border: 1px solid #444; pad
     <option value="checkers">Checkers Board</option>
   </select>
   <button id="renderBtn">Render (Ctrl+Enter)</button>
-  <button id="downloadVvd">Download .vvd</button>
-  <button id="downloadVvb">Download .vvb</button>
+  <button id="loadBtn">Load File</button>
+  <input type="file" id="fileInput" accept=".vvd,.vvb" style="display:none">
+  <button id="downloadVvd">Save .vvd</button>
+  <button id="downloadVvb">Save .vvb</button>
 </header>
 
 <div class="main">
@@ -403,6 +405,8 @@ const exampleSelect = document.getElementById('examples');
 const renderBtn = document.getElementById('renderBtn');
 const downloadVvdBtn = document.getElementById('downloadVvd');
 const downloadVvbBtn = document.getElementById('downloadVvb');
+const loadBtn = document.getElementById('loadBtn');
+const fileInput = document.getElementById('fileInput');
 
 const parser = new VVDParser();
 const renderer = new VVDRenderer(canvas);
@@ -415,56 +419,104 @@ function doRender() {
     const result = renderer.renderParsed(parsed);
 
     statusEl.className = 'status';
-    statusText.textContent = `Rendered: ${result.commands} commands, ${result.defs} definitions`;
+    statusText.textContent = 'Rendered: ' + result.commands + ' commands, ' + result.defs + ' definitions';
 
     // Show binary size estimate
     try {
       const buf = binary.serialize(parsed);
       const textSize = new Blob([source]).size;
-      binaryInfo.textContent = `Text: ${textSize}B | Binary: ${buf.byteLength}B (${Math.round(buf.byteLength / textSize * 100)}%)`;
+      binaryInfo.textContent = 'Text: ' + textSize + 'B | Binary: ' + buf.byteLength + 'B (' + Math.round(buf.byteLength / textSize * 100) + '%)';
     } catch (e) {
       binaryInfo.textContent = '';
     }
   } catch (e) {
     statusEl.className = 'status error';
-    statusText.textContent = `Error: ${e.message}`;
+    statusText.textContent = 'Error: ' + e.message;
     binaryInfo.textContent = '';
     console.error(e);
   }
 }
 
 function downloadFile(filename, content) {
-  const blob = content instanceof ArrayBuffer ? new Blob([content]) : new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  var blob = content instanceof ArrayBuffer ? new Blob([content]) : new Blob([content], { type: 'text/plain' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-downloadVvdBtn.addEventListener('click', () => {
+downloadVvdBtn.addEventListener('click', function() {
   downloadFile('diagram.vvd', editor.value);
 });
 
-downloadVvbBtn.addEventListener('click', () => {
+downloadVvbBtn.addEventListener('click', function() {
   try {
-    const parsed = parser.parse(editor.value);
-    const buf = binary.serialize(parsed);
+    var parsed = parser.parse(editor.value);
+    var buf = binary.serialize(parsed);
     downloadFile('diagram.vvb', buf);
   } catch (e) {
     statusEl.className = 'status error';
-    statusText.textContent = `Binary export error: ${e.message}`;
+    statusText.textContent = 'Binary export error: ' + e.message;
   }
 });
 
+// File load functionality
+loadBtn.addEventListener('click', function() {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  if (file.name.endsWith('.vvb')) {
+    // Binary file - read as ArrayBuffer
+    reader.onload = function(ev) {
+      try {
+        var buf = ev.target.result;
+        // Check for VVD1 magic bytes
+        var magic = new Uint8Array(buf, 0, 4);
+        if (magic[0] === 0x56 && magic[1] === 0x56 && magic[2] === 0x44 && magic[3] === 0x31) {
+          var parsed = binary.deserialize(buf);
+          editor.value = VVDParser.toSource(parsed);
+          doRender();
+          statusText.textContent = 'Loaded binary file: ' + file.name;
+        } else {
+          statusEl.className = 'status error';
+          statusText.textContent = 'Not a valid .vvb file (bad magic bytes)';
+        }
+      } catch (err) {
+        statusEl.className = 'status error';
+        statusText.textContent = 'Error loading .vvb: ' + err.message;
+        console.error(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    // Text file - read as text
+    reader.onload = function(ev) {
+      editor.value = ev.target.result;
+      doRender();
+      statusText.textContent = 'Loaded text file: ' + file.name;
+    };
+    reader.readAsText(file);
+  }
+
+  // Reset file input so the same file can be loaded again
+  fileInput.value = '';
+});
+
 renderBtn.addEventListener('click', doRender);
-editor.addEventListener('keydown', (e) => {
+editor.addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); doRender(); }
 });
 
-exampleSelect.addEventListener('change', () => {
-  const key = exampleSelect.value;
+exampleSelect.addEventListener('change', function() {
+  var key = exampleSelect.value;
   if (key && EXAMPLES[key]) {
     editor.value = EXAMPLES[key];
     doRender();
