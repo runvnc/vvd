@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVD Minimal Example</title>
+<style>
+body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; font-family: sans-serif; }
+.container { text-align: center; }
+h1 { margin-bottom: 16px; color: #333; }
+canvas { border: 1px solid #ccc; background: #fff; border-radius: 4px; }
+pre { text-align: left; background: #1a1a2e; color: #c9d1d9; padding: 16px; border-radius: 4px; margin-top: 16px; font-size: 13px; max-width: 600px; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>VVD Minimal Example</h1>
+  <div style="width:600px;height:400px;display:inline-block;">
+    <canvas id="canvas"></canvas>
+  </div>
+  <pre id="source"></pre>
+</div>
+
+<script src="vvd.js"></script>
+<script>
+// Define a VVD diagram as a string
+const vvdSource = `VVD1
+# Palette
+PAL 0, #333333
+PAL 1, #E74C3C
+PAL 2, #2980B9
+PAL 3, #2ECC71
+
+# Define a star shape
+DEF 1
+  MOV 0, -20
+  LIN 6, -6
+  LIN 20, -6
+  LIN 9, 4
+  LIN 13, 20
+  LIN 0, 11
+  LIN -13, 20
+  LIN -9, 4
+  LIN -20, -6
+  LIN -6, -6
+  LIN 0, -20
+END
+
+# Define a circle
+DEF 2
+  ARC 0, 0, 15, 0, 360
+END
+
+# Draw a box
+MOV 20, 20
+LIN 280, 20, 0
+LIN 280, 180, 0
+LIN 20, 180, 0
+LIN 20, 20, 0
+
+# Place shapes
+SYM 1, 80, 100, 1
+SYM 2, 150, 100, 2
+SYM 1, 220, 100, 3
+
+# Title
+TXT "VVD Library Demo", 150, 160, 10, 0`;
+
+// Display the source
+document.getElementById('source').textContent = vvdSource;
+
+// Render using the VVD library
+const canvas = document.getElementById('canvas');
+const renderer = new VVDRenderer(canvas);
+renderer.render(vvdSource);
+
+// Re-render on resize
+window.addEventListener('resize', () => renderer.render(vvdSource));
+</script>
+</body>
+</html>

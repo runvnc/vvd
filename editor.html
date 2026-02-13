@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVD Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+header { background: #16213e; padding: 10px 20px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #0f3460; flex-wrap: wrap; }
+header h1 { font-size: 18px; color: #e94560; }
+header button { background: #0f3460; color: #e0e0e0; border: 1px solid #e94560; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+header button:hover { background: #e94560; color: #fff; }
+header select { background: #0f3460; color: #e0e0e0; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; font-size: 13px; }
+.main { display: flex; flex: 1; overflow: hidden; }
+.editor-panel { width: 45%; display: flex; flex-direction: column; border-right: 1px solid #0f3460; }
+.editor-panel textarea { flex: 1; background: #0d1117; color: #c9d1d9; font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; padding: 12px; border: none; resize: none; outline: none; line-height: 1.5; tab-size: 2; }
+.canvas-panel { flex: 1; display: flex; flex-direction: column; background: #fff; }
+.canvas-panel canvas { flex: 1; display: block; }
+.status { background: #16213e; padding: 6px 16px; font-size: 12px; color: #888; border-top: 1px solid #0f3460; display: flex; justify-content: space-between; }
+.status.error { color: #e94560; }
+.status .binary-info { color: #666; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>VVD Editor</h1>
+  <select id="examples">
+    <option value="">-- Load Example --</option>
+    <option value="hello">Hello World</option>
+    <option value="tictactoe">Tic-Tac-Toe</option>
+    <option value="arcs">Arcs Demo</option>
+    <option value="flowchart">Flowchart</option>
+    <option value="checkers">Checkers Board</option>
+  </select>
+  <button id="renderBtn">Render (Ctrl+Enter)</button>
+  <button id="downloadVvd">Download .vvd</button>
+  <button id="downloadVvb">Download .vvb</button>
+</header>
+
+<div class="main">
+  <div class="editor-panel">
+    <textarea id="editor" spellcheck="false"></textarea>
+  </div>
+  <div class="canvas-panel">
+    <canvas id="canvas"></canvas>
+  </div>
+</div>
+
+<div class="status" id="status">
+  <span id="statusText">Ready</span>
+  <span id="binaryInfo" class="binary-info"></span>
+</div>
+
+<script src="vvd.js"></script>
+<script>
+const EXAMPLES = {
+hello: `VVD1
+# Palette
+PAL 0, #000000
+PAL 1, #3366CC
+
+# Draw a box from (10,10) to (190,50)
+MOV 10, 10
+LIN 190, 10, 1
+LIN 190, 50, 1
+LIN 10, 50, 1
+LIN 10, 10, 1
+
+# Text centered inside the box
+TXT "Hello, World!", 100, 30, 12, 0`,
+
+tictactoe: `VVD1
+# --- Palette ---
+PAL 0, #333333
+PAL 1, #E74C3C
+PAL 2, #2980B9
+
+# --- Definitions ---
+
+# X mark: two diagonal lines
+DEF 1
+  MOV -8, -8
+  LIN 8, 8
+  MOV 8, -8
+  LIN -8, 8
+END
+
+# O mark: full circle, radius 10
+DEF 2
+  ARC 0, 0, 10, 0, 360
+END
+
+# --- Grid ---
+MOV 40, 10
+LIN 40, 100, 0
+MOV 70, 10
+LIN 70, 100, 0
+MOV 10, 40
+LIN 100, 40, 0
+MOV 10, 70
+LIN 100, 70, 0
+
+# --- X marks ---
+SYM 1, 25, 25, 1
+SYM 1, 55, 55, 1
+SYM 1, 85, 85, 1
+
+# --- O marks ---
+SYM 2, 55, 25, 2
+SYM 2, 25, 55, 2
+
+# --- Label ---
+TXT "Tic-Tac-Toe", 55, 115, 10, 0`,
+
+arcs: `VVD1
+PAL 0, #333333
+PAL 1, #E74C3C
+PAL 2, #2ECC71
+PAL 3, #3498DB
+PAL 4, #9B59B6
+PAL 5, #F39C12
+
+# Full circle
+ARC 60, 60, 40, 0, 360, 1
+TXT "Circle", 60, 115, 8, 0
+
+# Semicircle (top half)
+ARC 180, 60, 40, 180, 360, 3
+TXT "Semicircle", 180, 115, 8, 0
+
+# Pac-Man (arc with gap)
+ARC 300, 60, 40, 35, 325, 5
+# Mouth lines
+MOV 300, 60
+LIN 338, 37, 5
+MOV 300, 60
+LIN 338, 83, 5
+# Eye
+ARC 310, 40, 5, 0, 360, 0
+TXT "Pac-Man", 300, 115, 8, 0
+
+# Quarter arcs (pie slices)
+ARC 60, 200, 40, 0, 90, 1
+ARC 60, 200, 40, 90, 180, 2
+ARC 60, 200, 40, 180, 270, 3
+ARC 60, 200, 40, 270, 360, 4
+TXT "Quarters", 60, 255, 8, 0
+
+# Concentric rings
+ARC 180, 200, 15, 0, 360, 1
+ARC 180, 200, 25, 0, 360, 3
+ARC 180, 200, 35, 0, 360, 2
+ARC 180, 200, 45, 0, 360, 4
+TXT "Rings", 180, 260, 8, 0
+
+# Smiley face
+ARC 300, 200, 40, 0, 360, 5
+ARC 280, 185, 6, 0, 360, 0
+ARC 320, 185, 6, 0, 360, 0
+ARC 300, 200, 22, 20, 160, 0
+TXT "Smiley", 300, 260, 8, 0
+
+# Petal / leaf shape (two overlapping arcs)
+ARC 80, 350, 40, 300, 60, 2
+ARC 120, 350, 40, 120, 240, 4
+TXT "Petal", 100, 400, 8, 0`,
+
+flowchart: `VVD1
+PAL 0, #333333
+PAL 1, #2ECC71
+PAL 2, #3498DB
+PAL 3, #E67E22
+PAL 4, #E74C3C
+
+# --- Definitions ---
+
+# Box (40x20)
+DEF 10
+  MOV -20, -10
+  LIN 20, -10
+  LIN 20, 10
+  LIN -20, 10
+  LIN -20, -10
+END
+
+# Diamond (20x20)
+DEF 11
+  MOV 0, -14
+  LIN 20, 0
+  LIN 0, 14
+  LIN -20, 0
+  LIN 0, -14
+END
+
+# --- Flowchart ---
+
+# Start
+SYM 10, 100, 30, 1
+TXT "Start", 100, 30, 8, 0
+
+# Arrow down
+MOV 100, 40
+LIN 100, 56, 0
+
+# Process
+SYM 10, 100, 70, 2
+TXT "Process", 100, 70, 8, 0
+
+# Arrow down
+MOV 100, 80
+LIN 100, 96, 0
+
+# Decision
+SYM 11, 100, 114, 3
+TXT "OK?", 100, 114, 8, 0
+
+# Yes arrow (down)
+MOV 100, 128
+LIN 100, 150, 0
+TXT "Yes", 108, 140, 6, 1
+
+# End
+SYM 10, 100, 164, 1
+TXT "Done", 100, 164, 8, 0
+
+# No arrow (right)
+MOV 120, 114
+LIN 170, 114, 0
+TXT "No", 145, 108, 6, 4
+
+# Error box
+SYM 10, 200, 114, 4
+TXT "Error", 200, 114, 8, 0`,
+
+checkers: `VVD1
+# --- Checkers / Draughts Board ---
+PAL 0, #000000
+PAL 1, #F5DEB3
+PAL 2, #8B4513
+PAL 3, #CC0000
+PAL 4, #222222
+PAL 5, #FF4444
+PAL 6, #555555
+
+# --- Definitions ---
+
+# Light square (30x30)
+DEF 1
+  MOV -15, -15
+  LIN 15, -15
+  LIN 15, 15
+  LIN -15, 15
+  LIN -15, -15
+END
+
+# Dark square (30x30)
+DEF 2
+  MOV -15, -15
+  LIN 15, -15
+  LIN 15, 15
+  LIN -15, 15
+  LIN -15, -15
+END
+
+# Piece (circle r=11)
+DEF 3
+  ARC 0, 0, 11, 0, 360
+END
+
+# Inner ring for king highlight (r=6)
+DEF 4
+  ARC 0, 0, 6, 0, 360
+END
+
+# --- Board grid lines ---
+# Outer border
+MOV 0, 0
+LIN 240, 0, 0
+LIN 240, 240, 0
+LIN 0, 240, 0
+LIN 0, 0, 0
+
+# Vertical lines
+MOV 30, 0
+LIN 30, 240, 0
+MOV 60, 0
+LIN 60, 240, 0
+MOV 90, 0
+LIN 90, 240, 0
+MOV 120, 0
+LIN 120, 240, 0
+MOV 150, 0
+LIN 150, 240, 0
+MOV 180, 0
+LIN 180, 240, 0
+MOV 210, 0
+LIN 210, 240, 0
+
+# Horizontal lines
+MOV 0, 30
+LIN 240, 30, 0
+MOV 0, 60
+LIN 240, 60, 0
+MOV 0, 90
+LIN 240, 90, 0
+MOV 0, 120
+LIN 240, 120, 0
+MOV 0, 150
+LIN 240, 150, 0
+MOV 0, 180
+LIN 240, 180, 0
+MOV 0, 210
+LIN 240, 210, 0
+
+# --- Dark squares ---
+# Row 0 (y=15): dark at cols 1,3,5,7
+SYM 2, 45, 15, 2
+SYM 2, 105, 15, 2
+SYM 2, 165, 15, 2
+SYM 2, 225, 15, 2
+# Row 1 (y=45): dark at cols 0,2,4,6
+SYM 2, 15, 45, 2
+SYM 2, 75, 45, 2
+SYM 2, 135, 45, 2
+SYM 2, 195, 45, 2
+# Row 2 (y=75): dark at cols 1,3,5,7
+SYM 2, 45, 75, 2
+SYM 2, 105, 75, 2
+SYM 2, 165, 75, 2
+SYM 2, 225, 75, 2
+# Row 3 (y=105): dark at cols 0,2,4,6
+SYM 2, 15, 105, 2
+SYM 2, 75, 105, 2
+SYM 2, 135, 105, 2
+SYM 2, 195, 105, 2
+# Row 4 (y=135): dark at cols 1,3,5,7
+SYM 2, 45, 135, 2
+SYM 2, 105, 135, 2
+SYM 2, 165, 135, 2
+SYM 2, 225, 135, 2
+# Row 5 (y=165): dark at cols 0,2,4,6
+SYM 2, 15, 165, 2
+SYM 2, 75, 165, 2
+SYM 2, 135, 165, 2
+SYM 2, 195, 165, 2
+# Row 6 (y=195): dark at cols 1,3,5,7
+SYM 2, 45, 195, 2
+SYM 2, 105, 195, 2
+SYM 2, 165, 195, 2
+SYM 2, 225, 195, 2
+# Row 7 (y=225): dark at cols 0,2,4,6
+SYM 2, 15, 225, 2
+SYM 2, 75, 225, 2
+SYM 2, 135, 225, 2
+SYM 2, 195, 225, 2
+
+# --- Red pieces (top, rows 0-2 on dark squares) ---
+# Row 0
+SYM 3, 45, 15, 3
+SYM 3, 105, 15, 3
+SYM 3, 165, 15, 3
+SYM 3, 225, 15, 3
+# Row 1
+SYM 3, 15, 45, 3
+SYM 3, 75, 45, 3
+SYM 3, 135, 45, 3
+SYM 3, 195, 45, 3
+# Row 2
+SYM 3, 45, 75, 3
+SYM 3, 105, 75, 3
+SYM 3, 165, 75, 3
+SYM 3, 225, 75, 3
+
+# --- Black pieces (bottom, rows 5-7 on dark squares) ---
+# Row 5
+SYM 3, 15, 165, 4
+SYM 3, 75, 165, 4
+SYM 3, 135, 165, 4
+SYM 3, 195, 165, 4
+# Row 6
+SYM 3, 45, 195, 4
+SYM 3, 105, 195, 4
+SYM 3, 165, 195, 4
+SYM 3, 225, 195, 4
+# Row 7
+SYM 3, 15, 225, 4
+SYM 3, 75, 225, 4
+SYM 3, 135, 225, 4
+SYM 3, 195, 225, 4
+
+# --- Title ---
+TXT "Checkers", 120, 260, 12, 0`
+};
+
+const editor = document.getElementById('editor');
+const canvas = document.getElementById('canvas');
+const statusText = document.getElementById('statusText');
+const binaryInfo = document.getElementById('binaryInfo');
+const statusEl = document.getElementById('status');
+const exampleSelect = document.getElementById('examples');
+const renderBtn = document.getElementById('renderBtn');
+const downloadVvdBtn = document.getElementById('downloadVvd');
+const downloadVvbBtn = document.getElementById('downloadVvb');
+
+const parser = new VVDParser();
+const renderer = new VVDRenderer(canvas);
+const binary = new VVDBinary();
+
+function doRender() {
+  try {
+    const source = editor.value;
+    const parsed = parser.parse(source);
+    const result = renderer.renderParsed(parsed);
+
+    statusEl.className = 'status';
+    statusText.textContent = `Rendered: ${result.commands} commands, ${result.defs} definitions`;
+
+    // Show binary size estimate
+    try {
+      const buf = binary.serialize(parsed);
+      const textSize = new Blob([source]).size;
+      binaryInfo.textContent = `Text: ${textSize}B | Binary: ${buf.byteLength}B (${Math.round(buf.byteLength / textSize * 100)}%)`;
+    } catch (e) {
+      binaryInfo.textContent = '';
+    }
+  } catch (e) {
+    statusEl.className = 'status error';
+    statusText.textContent = `Error: ${e.message}`;
+    binaryInfo.textContent = '';
+    console.error(e);
+  }
+}
+
+function downloadFile(filename, content) {
+  const blob = content instanceof ArrayBuffer ? new Blob([content]) : new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+downloadVvdBtn.addEventListener('click', () => {
+  downloadFile('diagram.vvd', editor.value);
+});
+
+downloadVvbBtn.addEventListener('click', () => {
+  try {
+    const parsed = parser.parse(editor.value);
+    const buf = binary.serialize(parsed);
+    downloadFile('diagram.vvb', buf);
+  } catch (e) {
+    statusEl.className = 'status error';
+    statusText.textContent = `Binary export error: ${e.message}`;
+  }
+});
+
+renderBtn.addEventListener('click', doRender);
+editor.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); doRender(); }
+});
+
+exampleSelect.addEventListener('change', () => {
+  const key = exampleSelect.value;
+  if (key && EXAMPLES[key]) {
+    editor.value = EXAMPLES[key];
+    doRender();
+  }
+});
+
+window.addEventListener('resize', doRender);
+
+editor.value = EXAMPLES.hello;
+setTimeout(doRender, 100);
+</script>
+</body>
+</html>

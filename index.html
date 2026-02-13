@@ -31,6 +31,7 @@ header select { background: #0f3460; color: #e0e0e0; border: 1px solid #444; pad
     <option value="tictactoe">Tic-Tac-Toe</option>
     <option value="arcs">Arcs Demo</option>
     <option value="flowchart">Flowchart</option>
+    <option value="checkers">Checkers Board</option>
   </select>
   <button id="renderBtn">Render (Ctrl+Enter)</button>
 </header>
@@ -228,6 +229,165 @@ TXT "No", 145, 108, 6, 4
 SYM 10, 200, 114, 4
 TXT "Error", 200, 114, 8, 0`
 };
+
+EXAMPLES.checkers = `VVD1
+# --- Checkers / Draughts Board ---
+PAL 0, #000000
+PAL 1, #F5DEB3
+PAL 2, #8B4513
+PAL 3, #CC0000
+PAL 4, #222222
+PAL 5, #FF4444
+PAL 6, #555555
+
+# --- Definitions ---
+
+# Light square (30x30)
+DEF 1
+  MOV -15, -15
+  LIN 15, -15
+  LIN 15, 15
+  LIN -15, 15
+  LIN -15, -15
+END
+
+# Dark square (30x30)
+DEF 2
+  MOV -15, -15
+  LIN 15, -15
+  LIN 15, 15
+  LIN -15, 15
+  LIN -15, -15
+END
+
+# Piece (circle r=11)
+DEF 3
+  ARC 0, 0, 11, 0, 360
+END
+
+# Inner ring for king highlight (r=6)
+DEF 4
+  ARC 0, 0, 6, 0, 360
+END
+
+# --- Board grid lines ---
+# Outer border
+MOV 0, 0
+LIN 240, 0, 0
+LIN 240, 240, 0
+LIN 0, 240, 0
+LIN 0, 0, 0
+
+# Vertical lines
+MOV 30, 0
+LIN 30, 240, 0
+MOV 60, 0
+LIN 60, 240, 0
+MOV 90, 0
+LIN 90, 240, 0
+MOV 120, 0
+LIN 120, 240, 0
+MOV 150, 0
+LIN 150, 240, 0
+MOV 180, 0
+LIN 180, 240, 0
+MOV 210, 0
+LIN 210, 240, 0
+
+# Horizontal lines
+MOV 0, 30
+LIN 240, 30, 0
+MOV 0, 60
+LIN 240, 60, 0
+MOV 0, 90
+LIN 240, 90, 0
+MOV 0, 120
+LIN 240, 120, 0
+MOV 0, 150
+LIN 240, 150, 0
+MOV 0, 180
+LIN 240, 180, 0
+MOV 0, 210
+LIN 240, 210, 0
+
+# --- Dark squares ---
+# Row 0 (y=15): dark at cols 1,3,5,7
+SYM 2, 45, 15, 2
+SYM 2, 105, 15, 2
+SYM 2, 165, 15, 2
+SYM 2, 225, 15, 2
+# Row 1 (y=45): dark at cols 0,2,4,6
+SYM 2, 15, 45, 2
+SYM 2, 75, 45, 2
+SYM 2, 135, 45, 2
+SYM 2, 195, 45, 2
+# Row 2 (y=75): dark at cols 1,3,5,7
+SYM 2, 45, 75, 2
+SYM 2, 105, 75, 2
+SYM 2, 165, 75, 2
+SYM 2, 225, 75, 2
+# Row 3 (y=105): dark at cols 0,2,4,6
+SYM 2, 15, 105, 2
+SYM 2, 75, 105, 2
+SYM 2, 135, 105, 2
+SYM 2, 195, 105, 2
+# Row 4 (y=135): dark at cols 1,3,5,7
+SYM 2, 45, 135, 2
+SYM 2, 105, 135, 2
+SYM 2, 165, 135, 2
+SYM 2, 225, 135, 2
+# Row 5 (y=165): dark at cols 0,2,4,6
+SYM 2, 15, 165, 2
+SYM 2, 75, 165, 2
+SYM 2, 135, 165, 2
+SYM 2, 195, 165, 2
+# Row 6 (y=195): dark at cols 1,3,5,7
+SYM 2, 45, 195, 2
+SYM 2, 105, 195, 2
+SYM 2, 165, 195, 2
+SYM 2, 225, 195, 2
+# Row 7 (y=225): dark at cols 0,2,4,6
+SYM 2, 15, 225, 2
+SYM 2, 75, 225, 2
+SYM 2, 135, 225, 2
+SYM 2, 195, 225, 2
+
+# --- Red pieces (top, rows 0-2 on dark squares) ---
+# Row 0
+SYM 3, 45, 15, 3
+SYM 3, 105, 15, 3
+SYM 3, 165, 15, 3
+SYM 3, 225, 15, 3
+# Row 1
+SYM 3, 15, 45, 3
+SYM 3, 75, 45, 3
+SYM 3, 135, 45, 3
+SYM 3, 195, 45, 3
+# Row 2
+SYM 3, 45, 75, 3
+SYM 3, 105, 75, 3
+SYM 3, 165, 75, 3
+SYM 3, 225, 75, 3
+
+# --- Black pieces (bottom, rows 5-7 on dark squares) ---
+# Row 5
+SYM 3, 15, 165, 4
+SYM 3, 75, 165, 4
+SYM 3, 135, 165, 4
+SYM 3, 195, 165, 4
+# Row 6
+SYM 3, 45, 195, 4
+SYM 3, 105, 195, 4
+SYM 3, 165, 195, 4
+SYM 3, 225, 195, 4
+# Row 7
+SYM 3, 15, 225, 4
+SYM 3, 75, 225, 4
+SYM 3, 135, 225, 4
+SYM 3, 195, 225, 4
+
+# --- Title ---
+TXT "Checkers", 120, 260, 12, 0`;
 
 class VVDRenderer {
   constructor(canvas) {
