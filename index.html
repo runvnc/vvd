@@ -152,7 +152,14 @@ ARC 300, 200, 40, 0, 360, 5
 ARC 280, 185, 6, 0, 360, 0
 ARC 320, 185, 6, 0, 360, 0
 ARC 300, 200, 22, 20, 160, 0
-TXT "Smiley", 300, 260, 8, 0`,
+TXT "Smiley", 300, 260, 8, 0
+
+# Petal / leaf shape (two overlapping arcs)
+# Circle 1 center left, draw right-side bulge
+ARC 80, 350, 40, 300, 60, 2
+# Circle 2 center right, draw left-side bulge
+ARC 120, 350, 40, 120, 240, 4
+TXT "Petal", 100, 400, 8, 0`,
 
 flowchart: `VVD1
 PAL 0, #333333
