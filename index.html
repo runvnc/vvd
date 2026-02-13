@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVD Viewer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+header { background: #16213e; padding: 10px 20px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #0f3460; }
+header h1 { font-size: 18px; color: #e94560; }
+header button { background: #0f3460; color: #e0e0e0; border: 1px solid #e94560; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+header button:hover { background: #e94560; color: #fff; }
+header select { background: #0f3460; color: #e0e0e0; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; font-size: 13px; }
+.main { display: flex; flex: 1; overflow: hidden; }
+.editor-panel { width: 45%; display: flex; flex-direction: column; border-right: 1px solid #0f3460; }
+.editor-panel textarea { flex: 1; background: #0d1117; color: #c9d1d9; font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; padding: 12px; border: none; resize: none; outline: none; line-height: 1.5; tab-size: 2; }
+.canvas-panel { flex: 1; display: flex; flex-direction: column; background: #fff; }
+.canvas-panel canvas { flex: 1; display: block; }
+.status { background: #16213e; padding: 6px 16px; font-size: 12px; color: #888; border-top: 1px solid #0f3460; }
+.status.error { color: #e94560; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>VVD Viewer</h1>
+  <select id="examples">
+    <option value="">-- Load Example --</option>
+    <option value="hello">Hello World</option>
+    <option value="tictactoe">Tic-Tac-Toe</option>
+    <option value="bezier">Bezier Demo</option>
+    <option value="flowchart">Flowchart</option>
+  </select>
+  <button id="renderBtn">Render (Ctrl+Enter)</button>
+</header>
+
+<div class="main">
+  <div class="editor-panel">
+    <textarea id="editor" spellcheck="false"></textarea>
+  </div>
+  <div class="canvas-panel">
+    <canvas id="canvas"></canvas>
+  </div>
+</div>
+
+<div class="status" id="status">Ready</div>
+
+<script>
+// ---- Examples ----
+const EXAMPLES = {
+hello: `VVD1
+# Palette
+PAL 0, #000000
+PAL 1, #3366CC
+PAL 2, #FFFFFF
+
+# Draw a box from (10,10) to (190,50)
+MOV 10, 10
+LIN 190, 10, 1
+LIN 190, 50, 1
+LIN 10, 50, 1
+LIN 10, 10, 1
+
+# Text centered inside the box
+TXT "Hello, World!", 30, 38, 12, 0`,
+
+tictactoe: `VVD1
+# --- Palette ---
+PAL 0, #333333
+PAL 1, #E74C3C
+PAL 2, #2980B9
+
+# --- Definitions ---
+
+# X mark
+DEF 1
+  MOV -8, -8
+  LIN 8, 8
+  MOV 8, -8
+  LIN -8, 8
+END
+
+# O mark (bezier circle, radius ~10)
+DEF 2
+  MOV 0, -10
+  BEZ 5.5,-10, 10,-5.5, 10,0
+  BEZ 10,5.5, 5.5,10, 0,10
+  BEZ -5.5,10, -10,5.5, -10,0
+  BEZ -10,-5.5, -5.5,-10, 0,-10
+END
+
+# --- Grid ---
+MOV 40, 10
+LIN 40, 100, 0
+MOV 70, 10
+LIN 70, 100, 0
+MOV 10, 40
+LIN 100, 40, 0
+MOV 10, 70
+LIN 100, 70, 0
+
+# --- X marks ---
+SYM 1, 25, 25, 1
+SYM 1, 55, 55, 1
+SYM 1, 85, 85, 1
+
+# --- O marks ---
+SYM 2, 55, 25, 2
+SYM 2, 25, 55, 2
+
+# --- Label ---
+TXT "Tic-Tac-Toe", 20, 115, 10, 0`,
+
+bezier: `VVD1
+PAL 0, #333333
+PAL 1, #E74C3C
+PAL 2, #2ECC71
+PAL 3, #3498DB
+PAL 4, #9B59B6
+
+# A smooth S-curve
+MOV 20, 80
+BEZ 60,10, 140,150, 180,80, 1
+
+# A loop
+MOV 20, 160
+BEZ 80,100, 120,220, 180,160, 3
+
+# Petal shape (two curves meeting)
+MOV 100, 30
+BEZ 130,10, 160,30, 140,60, 2
+MOV 100, 30
+BEZ 70,10, 40,30, 60,60, 4
+
+# Labels
+TXT "S-Curve", 70, 95, 8, 0
+TXT "Loop", 75, 175, 8, 0
+TXT "Petal", 80, 75, 8, 0`,
+
+flowchart: `VVD1
+PAL 0, #333333
+PAL 1, #2ECC71
+PAL 2, #3498DB
+PAL 3, #E67E22
+PAL 4, #E74C3C
+
+# --- Definitions ---
+
+# Box (40x20)
+DEF 10
+  MOV -20, -10
+  LIN 20, -10
+  LIN 20, 10
+  LIN -20, 10
+  LIN -20, -10
+END
+
+# Diamond (20x20)
+DEF 11
+  MOV 0, -14
+  LIN 20, 0
+  LIN 0, 14
+  LIN -20, 0
+  LIN 0, -14
+END
+
+# --- Flowchart ---
+
+# Start
+SYM 10, 100, 30, 1
+TXT "Start", 84, 34, 8, 0
+
+# Arrow down
+MOV 100, 40
+LIN 100, 56, 0
+
+# Process
+SYM 10, 100, 70, 2
+TXT "Process", 80, 74, 8, 0
+
+# Arrow down
+MOV 100, 80
+LIN 100, 96, 0
+
+# Decision
+SYM 11, 100, 114, 3
+TXT "OK?", 90, 118, 8, 0
+
+# Yes arrow (down)
+MOV 100, 128
+LIN 100, 150, 0
+TXT "Yes", 104, 142, 6, 1
+
+# End
+SYM 10, 100, 164, 1
+TXT "Done", 86, 168, 8, 0
+
+# No arrow (right)
+MOV 120, 114
+LIN 170, 114, 0
+TXT "No", 140, 110, 6, 4
+
+# Error box
+SYM 10, 200, 114, 4
+TXT "Error", 184, 118, 8, 0`
+};
+
+// ---- Parser & Renderer ----
+class VVDRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+  }
+
+  render(source) {
+    const ctx = this.ctx;
+    const canvas = this.canvas;
+
+    // Fit canvas to container
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // State
+    const palette = new Array(256).fill('#000000');
+    const defs = {};
+    let penX = 0, penY = 0;
+    let siz = 1.0;
+    let rot = 0;
+    let inDef = null;
+    let defId = null;
+    let defCmds = [];
+
+    // Parse
+    const lines = source.split('\n');
+    const commands = [];
+
+    for (let raw of lines) {
+      let line = raw.replace(/#.*$/, '').trim();
+      if (!line || line === 'VVD1') continue;
+      commands.push(line);
+    }
+
+    // First pass: collect palette and defs, build scene commands
+    const sceneCmds = [];
+
+    for (let i = 0; i < commands.length; i++) {
+      const line = commands[i];
+      const parts = this.tokenize(line);
+      if (!parts.length) continue;
+      const cmd = parts[0].toUpperCase();
+
+      if (inDef !== null) {
+        if (cmd === 'END') {
+          defs[defId] = defCmds;
+          inDef = null;
+          defCmds = [];
+          continue;
+        }
+        defCmds.push({ cmd, args: parts.slice(1) });
+        continue;
+      }
+
+      if (cmd === 'PAL') {
+        const id = parseInt(parts[1]);
+        const hex = parts[2];
+        palette[id] = hex;
+      } else if (cmd === 'DEF') {
+        defId = parseInt(parts[1]);
+        inDef = defId;
+        defCmds = [];
+      } else {
+        sceneCmds.push({ cmd, args: parts.slice(1) });
+      }
+    }
+
+    // Compute bounding box
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const trackPoint = (x, y) => {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    };
+
+    // Dry run for bounds
+    let tmpPenX = 0, tmpPenY = 0, tmpSiz = 1.0, tmpRot = 0;
+    for (const { cmd, args } of sceneCmds) {
+      switch (cmd) {
+        case 'MOV':
+          tmpPenX = parseFloat(args[0]); tmpPenY = parseFloat(args[1]);
+          trackPoint(tmpPenX, tmpPenY);
+          break;
+        case 'LIN':
+          tmpPenX = parseFloat(args[0]); tmpPenY = parseFloat(args[1]);
+          trackPoint(tmpPenX, tmpPenY);
+          break;
+        case 'BEZ': {
+          const nums = args.map(parseFloat);
+          trackPoint(nums[0], nums[1]);
+          trackPoint(nums[2], nums[3]);
+          trackPoint(nums[4], nums[5]);
+          tmpPenX = nums[4]; tmpPenY = nums[5];
+          break;
+        }
+        case 'SIZ': tmpSiz = parseFloat(args[0]); break;
+        case 'ROT': tmpRot = parseFloat(args[0]); break;
+        case 'SYM': {
+          const id = parseInt(args[0]);
+          const sx = parseFloat(args[1]), sy = parseFloat(args[2]);
+          const def = defs[id];
+          if (def) {
+            for (const dc of def) {
+              const da = dc.args.map(parseFloat);
+              if (dc.cmd === 'MOV' || dc.cmd === 'LIN') {
+                const rx = da[0] * tmpSiz, ry = da[1] * tmpSiz;
+                trackPoint(sx + rx, sy + ry);
+              } else if (dc.cmd === 'BEZ') {
+                for (let j = 0; j < 6; j += 2) {
+                  const rx = da[j] * tmpSiz, ry = da[j+1] * tmpSiz;
+                  trackPoint(sx + rx, sy + ry);
+                }
+              }
+            }
+          }
+          tmpRot = 0;
+          break;
+        }
+        case 'TXT': {
+          const str = this.extractString(args);
+          const rest = this.argsAfterString(args);
+          const tx = parseFloat(rest[0]), ty = parseFloat(rest[1]);
+          const tsz = parseFloat(rest[2]);
+          trackPoint(tx, ty);
+          trackPoint(tx + str.length * tsz * 0.6, ty);
+          break;
+        }
+      }
+    }
+
+    if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 200; maxY = 200; }
+
+    // Add padding
+    const pad = 15;
+    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    const worldW = maxX - minX;
+    const worldH = maxY - minY;
+    const scaleX = canvas.width / worldW;
+    const scaleY = canvas.height / worldH;
+    const scale = Math.min(scaleX, scaleY);
+    const offsetX = (canvas.width - worldW * scale) / 2 - minX * scale;
+    const offsetY = (canvas.height - worldH * scale) / 2 - minY * scale;
+
+    const tx = (x) => x * scale + offsetX;
+    const ty = (y) => y * scale + offsetY;
+
+    // Clear
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Render
+    penX = 0; penY = 0; siz = 1.0; rot = 0;
+    ctx.lineWidth = Math.max(1, scale * 1.2);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (const { cmd, args } of sceneCmds) {
+      switch (cmd) {
+        case 'MOV':
+          penX = parseFloat(args[0]);
+          penY = parseFloat(args[1]);
+          break;
+
+        case 'LIN': {
+          const lx = parseFloat(args[0]), ly = parseFloat(args[1]);
+          const col = parseInt(args[2]);
+          ctx.strokeStyle = palette[col] || '#000';
+          ctx.beginPath();
+          ctx.moveTo(tx(penX), ty(penY));
+          ctx.lineTo(tx(lx), ty(ly));
+          ctx.stroke();
+          penX = lx; penY = ly;
+          break;
+        }
+
+        case 'BEZ': {
+          const nums = args.map(parseFloat);
+          const col = parseInt(nums[6]);
+          ctx.strokeStyle = palette[col] || '#000';
+          ctx.beginPath();
+          ctx.moveTo(tx(penX), ty(penY));
+          ctx.bezierCurveTo(tx(nums[0]), ty(nums[1]), tx(nums[2]), ty(nums[3]), tx(nums[4]), ty(nums[5]));
+          ctx.stroke();
+          penX = nums[4]; penY = nums[5];
+          break;
+        }
+
+        case 'SIZ':
+          siz = parseFloat(args[0]);
+          break;
+
+        case 'ROT':
+          rot = parseFloat(args[0]);
+          break;
+
+        case 'SYM': {
+          const id = parseInt(args[0]);
+          const sx = parseFloat(args[1]), sy = parseFloat(args[2]);
+          const col = parseInt(args[3]);
+          const def = defs[id];
+          if (!def) break;
+
+          ctx.strokeStyle = palette[col] || '#000';
+          const rad = rot * Math.PI / 180;
+          let localPenX = 0, localPenY = 0;
+
+          for (const dc of def) {
+            const da = dc.args.map(parseFloat);
+            if (dc.cmd === 'MOV') {
+              let rx = da[0] * siz, ry = da[1] * siz;
+              if (rot !== 0) {
+                const nx = rx * Math.cos(rad) - ry * Math.sin(rad);
+                const ny = rx * Math.sin(rad) + ry * Math.cos(rad);
+                rx = nx; ry = ny;
+              }
+              localPenX = sx + rx;
+              localPenY = sy + ry;
+            } else if (dc.cmd === 'LIN') {
+              let rx = da[0] * siz, ry = da[1] * siz;
+              if (rot !== 0) {
+                const nx = rx * Math.cos(rad) - ry * Math.sin(rad);
+                const ny = rx * Math.sin(rad) + ry * Math.cos(rad);
+                rx = nx; ry = ny;
+              }
+              const ex = sx + rx, ey = sy + ry;
+              ctx.beginPath();
+              ctx.moveTo(tx(localPenX), ty(localPenY));
+              ctx.lineTo(tx(ex), ty(ey));
+              ctx.stroke();
+              localPenX = ex; localPenY = ey;
+            } else if (dc.cmd === 'BEZ') {
+              const pts = [];
+              for (let j = 0; j < 6; j += 2) {
+                let rx = da[j] * siz, ry = da[j+1] * siz;
+                if (rot !== 0) {
+                  const nx = rx * Math.cos(rad) - ry * Math.sin(rad);
+                  const ny = rx * Math.sin(rad) + ry * Math.cos(rad);
+                  rx = nx; ry = ny;
+                }
+                pts.push(sx + rx, sy + ry);
+              }
+              ctx.beginPath();
+              ctx.moveTo(tx(localPenX), ty(localPenY));
+              ctx.bezierCurveTo(tx(pts[0]), ty(pts[1]), tx(pts[2]), ty(pts[3]), tx(pts[4]), ty(pts[5]));
+              ctx.stroke();
+              localPenX = pts[4]; localPenY = pts[5];
+            }
+          }
+          rot = 0;
+          break;
+        }
+
+        case 'TXT': {
+          const str = this.extractString(args);
+          const rest = this.argsAfterString(args);
+          const txtX = parseFloat(rest[0]), txtY = parseFloat(rest[1]);
+          const txtSize = parseFloat(rest[2]);
+          const col = parseInt(rest[3]);
+          ctx.fillStyle = palette[col] || '#000';
+          ctx.font = `${txtSize * scale}px sans-serif`;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(str, tx(txtX), ty(txtY));
+          break;
+        }
+      }
+    }
+
+    return { defs: Object.keys(defs).length, commands: sceneCmds.length };
+  }
+
+  tokenize(line) {
+    // Split respecting quoted strings
+    const tokens = [];
+    let i = 0;
+    while (i < line.length) {
+      // skip whitespace and commas
+      while (i < line.length && (line[i] === ' ' || line[i] === ',' || line[i] === '\t')) i++;
+      if (i >= line.length) break;
+      if (line[i] === '"') {
+        // quoted string
+        i++;
+        let s = '';
+        while (i < line.length && line[i] !== '"') { s += line[i]; i++; }
+        tokens.push(s);
+        i++; // skip closing quote
+      } else {
+        let s = '';
+        while (i < line.length && line[i] !== ' ' && line[i] !== ',' && line[i] !== '\t') { s += line[i]; i++; }
+        tokens.push(s);
+      }
+    }
+    return tokens;
+  }
+
+  extractString(args) {
+    // The first arg that's not a number is the string
+    return args[0];
+  }
+
+  argsAfterString(args) {
+    return args.slice(1);
+  }
+}
+
+// ---- UI ----
+const editor = document.getElementById('editor');
+const canvas = document.getElementById('canvas');
+const status = document.getElementById('status');
+const exampleSelect = document.getElementById('examples');
+const renderBtn = document.getElementById('renderBtn');
+const renderer = new VVDRenderer(canvas);
+
+function doRender() {
+  try {
+    const result = renderer.render(editor.value);
+    status.className = 'status';
+    status.textContent = `Rendered: ${result.commands} commands, ${result.defs} definitions`;
+  } catch (e) {
+    status.className = 'status error';
+    status.textContent = `Error: ${e.message}`;
+    console.error(e);
+  }
+}
+
+renderBtn.addEventListener('click', doRender);
+editor.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); doRender(); }
+});
+
+exampleSelect.addEventListener('change', () => {
+  const key = exampleSelect.value;
+  if (key && EXAMPLES[key]) {
+    editor.value = EXAMPLES[key];
+    doRender();
+  }
+});
+
+window.addEventListener('resize', doRender);
+
+// Load first example
+editor.value = EXAMPLES.hello;
+setTimeout(doRender, 100);
+</script>
+</body>
+</html>
