@@ -29,7 +29,7 @@ header select { background: #0f3460; color: #e0e0e0; border: 1px solid #444; pad
     <option value="">-- Load Example --</option>
     <option value="hello">Hello World</option>
     <option value="tictactoe">Tic-Tac-Toe</option>
-    <option value="bezier">Bezier Demo</option>
+    <option value="arcs">Arcs Demo</option>
     <option value="flowchart">Flowchart</option>
   </select>
   <button id="renderBtn">Render (Ctrl+Enter)</button>
@@ -47,13 +47,11 @@ header select { background: #0f3460; color: #e0e0e0; border: 1px solid #444; pad
 <div class="status" id="status">Ready</div>
 
 <script>
-// ---- Examples ----
 const EXAMPLES = {
 hello: `VVD1
 # Palette
 PAL 0, #000000
 PAL 1, #3366CC
-PAL 2, #FFFFFF
 
 # Draw a box from (10,10) to (190,50)
 MOV 10, 10
@@ -63,7 +61,7 @@ LIN 10, 50, 1
 LIN 10, 10, 1
 
 # Text centered inside the box
-TXT "Hello, World!", 30, 38, 12, 0`,
+TXT "Hello, World!", 100, 30, 12, 0`,
 
 tictactoe: `VVD1
 # --- Palette ---
@@ -73,7 +71,7 @@ PAL 2, #2980B9
 
 # --- Definitions ---
 
-# X mark
+# X mark: two diagonal lines
 DEF 1
   MOV -8, -8
   LIN 8, 8
@@ -81,13 +79,9 @@ DEF 1
   LIN -8, 8
 END
 
-# O mark (bezier circle, radius ~10)
+# O mark: full circle, radius 10
 DEF 2
-  MOV 0, -10
-  BEZ 5.5,-10, 10,-5.5, 10,0
-  BEZ 10,5.5, 5.5,10, 0,10
-  BEZ -5.5,10, -10,5.5, -10,0
-  BEZ -10,-5.5, -5.5,-10, 0,-10
+  ARC 0, 0, 10, 0, 360
 END
 
 # --- Grid ---
@@ -110,33 +104,55 @@ SYM 2, 55, 25, 2
 SYM 2, 25, 55, 2
 
 # --- Label ---
-TXT "Tic-Tac-Toe", 20, 115, 10, 0`,
+TXT "Tic-Tac-Toe", 55, 115, 10, 0`,
 
-bezier: `VVD1
+arcs: `VVD1
 PAL 0, #333333
 PAL 1, #E74C3C
 PAL 2, #2ECC71
 PAL 3, #3498DB
 PAL 4, #9B59B6
+PAL 5, #F39C12
 
-# A smooth S-curve
-MOV 20, 80
-BEZ 60,10, 140,150, 180,80, 1
+# Full circle
+ARC 60, 60, 40, 0, 360, 1
+TXT "Circle", 60, 115, 8, 0
 
-# A loop
-MOV 20, 160
-BEZ 80,100, 120,220, 180,160, 3
+# Semicircle (top half)
+ARC 180, 60, 40, 180, 360, 3
+TXT "Semicircle", 180, 115, 8, 0
 
-# Petal shape (two curves meeting)
-MOV 100, 30
-BEZ 130,10, 160,30, 140,60, 2
-MOV 100, 30
-BEZ 70,10, 40,30, 60,60, 4
+# Pac-Man (arc with gap)
+ARC 300, 60, 40, 35, 325, 5
+# Mouth lines
+MOV 300, 60
+LIN 338, 37, 5
+MOV 300, 60
+LIN 338, 83, 5
+# Eye
+ARC 310, 40, 5, 0, 360, 0
+TXT "Pac-Man", 300, 115, 8, 0
 
-# Labels
-TXT "S-Curve", 70, 95, 8, 0
-TXT "Loop", 75, 175, 8, 0
-TXT "Petal", 80, 75, 8, 0`,
+# Quarter arcs (pie slices)
+ARC 60, 200, 40, 0, 90, 1
+ARC 60, 200, 40, 90, 180, 2
+ARC 60, 200, 40, 180, 270, 3
+ARC 60, 200, 40, 270, 360, 4
+TXT "Quarters", 60, 255, 8, 0
+
+# Concentric rings
+ARC 180, 200, 15, 0, 360, 1
+ARC 180, 200, 25, 0, 360, 3
+ARC 180, 200, 35, 0, 360, 2
+ARC 180, 200, 45, 0, 360, 4
+TXT "Rings", 180, 260, 8, 0
+
+# Smiley face
+ARC 300, 200, 40, 0, 360, 5
+ARC 280, 185, 6, 0, 360, 0
+ARC 320, 185, 6, 0, 360, 0
+ARC 300, 200, 22, 20, 160, 0
+TXT "Smiley", 300, 260, 8, 0`,
 
 flowchart: `VVD1
 PAL 0, #333333
@@ -169,7 +185,7 @@ END
 
 # Start
 SYM 10, 100, 30, 1
-TXT "Start", 84, 34, 8, 0
+TXT "Start", 100, 30, 8, 0
 
 # Arrow down
 MOV 100, 40
@@ -177,7 +193,7 @@ LIN 100, 56, 0
 
 # Process
 SYM 10, 100, 70, 2
-TXT "Process", 80, 74, 8, 0
+TXT "Process", 100, 70, 8, 0
 
 # Arrow down
 MOV 100, 80
@@ -185,28 +201,27 @@ LIN 100, 96, 0
 
 # Decision
 SYM 11, 100, 114, 3
-TXT "OK?", 90, 118, 8, 0
+TXT "OK?", 100, 114, 8, 0
 
 # Yes arrow (down)
 MOV 100, 128
 LIN 100, 150, 0
-TXT "Yes", 104, 142, 6, 1
+TXT "Yes", 108, 140, 6, 1
 
 # End
 SYM 10, 100, 164, 1
-TXT "Done", 86, 168, 8, 0
+TXT "Done", 100, 164, 8, 0
 
 # No arrow (right)
 MOV 120, 114
 LIN 170, 114, 0
-TXT "No", 140, 110, 6, 4
+TXT "No", 145, 108, 6, 4
 
 # Error box
 SYM 10, 200, 114, 4
-TXT "Error", 184, 118, 8, 0`
+TXT "Error", 200, 114, 8, 0`
 };
 
-// ---- Parser & Renderer ----
 class VVDRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -216,13 +231,10 @@ class VVDRenderer {
   render(source) {
     const ctx = this.ctx;
     const canvas = this.canvas;
-
-    // Fit canvas to container
     const rect = canvas.parentElement.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    // State
     const palette = new Array(256).fill('#000000');
     const defs = {};
     let penX = 0, penY = 0;
@@ -232,17 +244,15 @@ class VVDRenderer {
     let defId = null;
     let defCmds = [];
 
-    // Parse
     const lines = source.split('\n');
     const commands = [];
 
     for (let raw of lines) {
-      let line = raw.replace(/#.*$/, '').trim();
+      let line = raw.replace(/\s#(?![0-9a-fA-F]{3,8}\b).*$/, '').replace(/^#(?![0-9a-fA-F]{3,8}\b).*$/, '').trim();
       if (!line || line === 'VVD1') continue;
       commands.push(line);
     }
 
-    // First pass: collect palette and defs, build scene commands
     const sceneCmds = [];
 
     for (let i = 0; i < commands.length; i++) {
@@ -275,7 +285,7 @@ class VVDRenderer {
       }
     }
 
-    // Compute bounding box
+    // Bounding box
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     const trackPoint = (x, y) => {
       if (x < minX) minX = x;
@@ -284,7 +294,6 @@ class VVDRenderer {
       if (y > maxY) maxY = y;
     };
 
-    // Dry run for bounds
     let tmpPenX = 0, tmpPenY = 0, tmpSiz = 1.0, tmpRot = 0;
     for (const { cmd, args } of sceneCmds) {
       switch (cmd) {
@@ -296,12 +305,10 @@ class VVDRenderer {
           tmpPenX = parseFloat(args[0]); tmpPenY = parseFloat(args[1]);
           trackPoint(tmpPenX, tmpPenY);
           break;
-        case 'BEZ': {
-          const nums = args.map(parseFloat);
-          trackPoint(nums[0], nums[1]);
-          trackPoint(nums[2], nums[3]);
-          trackPoint(nums[4], nums[5]);
-          tmpPenX = nums[4]; tmpPenY = nums[5];
+        case 'ARC': {
+          const cx = parseFloat(args[0]), cy = parseFloat(args[1]), r = parseFloat(args[2]);
+          trackPoint(cx - r, cy - r);
+          trackPoint(cx + r, cy + r);
           break;
         }
         case 'SIZ': tmpSiz = parseFloat(args[0]); break;
@@ -316,11 +323,10 @@ class VVDRenderer {
               if (dc.cmd === 'MOV' || dc.cmd === 'LIN') {
                 const rx = da[0] * tmpSiz, ry = da[1] * tmpSiz;
                 trackPoint(sx + rx, sy + ry);
-              } else if (dc.cmd === 'BEZ') {
-                for (let j = 0; j < 6; j += 2) {
-                  const rx = da[j] * tmpSiz, ry = da[j+1] * tmpSiz;
-                  trackPoint(sx + rx, sy + ry);
-                }
+              } else if (dc.cmd === 'ARC') {
+                const r = da[2] * tmpSiz;
+                trackPoint(sx + da[0] * tmpSiz - r, sy + da[1] * tmpSiz - r);
+                trackPoint(sx + da[0] * tmpSiz + r, sy + da[1] * tmpSiz + r);
               }
             }
           }
@@ -332,8 +338,9 @@ class VVDRenderer {
           const rest = this.argsAfterString(args);
           const tx = parseFloat(rest[0]), ty = parseFloat(rest[1]);
           const tsz = parseFloat(rest[2]);
-          trackPoint(tx, ty);
-          trackPoint(tx + str.length * tsz * 0.6, ty);
+          const halfW = str.length * tsz * 0.3;
+          trackPoint(tx - halfW, ty - tsz * 0.5);
+          trackPoint(tx + halfW, ty + tsz * 0.5);
           break;
         }
       }
@@ -341,7 +348,6 @@ class VVDRenderer {
 
     if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 200; maxY = 200; }
 
-    // Add padding
     const pad = 15;
     minX -= pad; minY -= pad; maxX += pad; maxY += pad;
     const worldW = maxX - minX;
@@ -355,12 +361,10 @@ class VVDRenderer {
     const tx = (x) => x * scale + offsetX;
     const ty = (y) => y * scale + offsetY;
 
-    // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Render
     penX = 0; penY = 0; siz = 1.0; rot = 0;
     ctx.lineWidth = Math.max(1, scale * 1.2);
     ctx.lineCap = 'round';
@@ -385,15 +389,19 @@ class VVDRenderer {
           break;
         }
 
-        case 'BEZ': {
-          const nums = args.map(parseFloat);
-          const col = parseInt(nums[6]);
+        case 'ARC': {
+          const cx = parseFloat(args[0]), cy = parseFloat(args[1]);
+          const r = parseFloat(args[2]);
+          const startDeg = parseFloat(args[3]), endDeg = parseFloat(args[4]);
+          const col = parseInt(args[5]);
           ctx.strokeStyle = palette[col] || '#000';
           ctx.beginPath();
-          ctx.moveTo(tx(penX), ty(penY));
-          ctx.bezierCurveTo(tx(nums[0]), ty(nums[1]), tx(nums[2]), ty(nums[3]), tx(nums[4]), ty(nums[5]));
+          ctx.arc(tx(cx), ty(cy), r * scale, startDeg * Math.PI / 180, endDeg * Math.PI / 180);
           ctx.stroke();
-          penX = nums[4]; penY = nums[5];
+          // Update pen to arc endpoint
+          const endRad = endDeg * Math.PI / 180;
+          penX = cx + r * Math.cos(endRad);
+          penY = cy + r * Math.sin(endRad);
           break;
         }
 
@@ -440,22 +448,24 @@ class VVDRenderer {
               ctx.lineTo(tx(ex), ty(ey));
               ctx.stroke();
               localPenX = ex; localPenY = ey;
-            } else if (dc.cmd === 'BEZ') {
-              const pts = [];
-              for (let j = 0; j < 6; j += 2) {
-                let rx = da[j] * siz, ry = da[j+1] * siz;
-                if (rot !== 0) {
-                  const nx = rx * Math.cos(rad) - ry * Math.sin(rad);
-                  const ny = rx * Math.sin(rad) + ry * Math.cos(rad);
-                  rx = nx; ry = ny;
-                }
-                pts.push(sx + rx, sy + ry);
+            } else if (dc.cmd === 'ARC') {
+              // ARC cx, cy, r, startDeg, endDeg (no color in DEF)
+              let acx = da[0] * siz, acy = da[1] * siz;
+              const ar = da[2] * siz;
+              if (rot !== 0) {
+                const nx = acx * Math.cos(rad) - acy * Math.sin(rad);
+                const ny = acx * Math.sin(rad) + acy * Math.cos(rad);
+                acx = nx; acy = ny;
               }
+              const startDeg = da[3], endDeg = da[4];
               ctx.beginPath();
-              ctx.moveTo(tx(localPenX), ty(localPenY));
-              ctx.bezierCurveTo(tx(pts[0]), ty(pts[1]), tx(pts[2]), ty(pts[3]), tx(pts[4]), ty(pts[5]));
+              ctx.arc(tx(sx + acx), ty(sy + acy), ar * scale,
+                      (startDeg + rot) * Math.PI / 180,
+                      (endDeg + rot) * Math.PI / 180);
               ctx.stroke();
-              localPenX = pts[4]; localPenY = pts[5];
+              const endRad = (endDeg + rot) * Math.PI / 180;
+              localPenX = sx + acx + ar * Math.cos(endRad);
+              localPenY = sy + acy + ar * Math.sin(endRad);
             }
           }
           rot = 0;
@@ -471,6 +481,7 @@ class VVDRenderer {
           ctx.fillStyle = palette[col] || '#000';
           ctx.font = `${txtSize * scale}px sans-serif`;
           ctx.textBaseline = 'middle';
+          ctx.textAlign = 'center';
           ctx.fillText(str, tx(txtX), ty(txtY));
           break;
         }
@@ -481,20 +492,17 @@ class VVDRenderer {
   }
 
   tokenize(line) {
-    // Split respecting quoted strings
     const tokens = [];
     let i = 0;
     while (i < line.length) {
-      // skip whitespace and commas
       while (i < line.length && (line[i] === ' ' || line[i] === ',' || line[i] === '\t')) i++;
       if (i >= line.length) break;
       if (line[i] === '"') {
-        // quoted string
         i++;
         let s = '';
         while (i < line.length && line[i] !== '"') { s += line[i]; i++; }
         tokens.push(s);
-        i++; // skip closing quote
+        i++;
       } else {
         let s = '';
         while (i < line.length && line[i] !== ' ' && line[i] !== ',' && line[i] !== '\t') { s += line[i]; i++; }
@@ -504,17 +512,10 @@ class VVDRenderer {
     return tokens;
   }
 
-  extractString(args) {
-    // The first arg that's not a number is the string
-    return args[0];
-  }
-
-  argsAfterString(args) {
-    return args.slice(1);
-  }
+  extractString(args) { return args[0]; }
+  argsAfterString(args) { return args.slice(1); }
 }
 
-// ---- UI ----
 const editor = document.getElementById('editor');
 const canvas = document.getElementById('canvas');
 const status = document.getElementById('status');
@@ -549,7 +550,6 @@ exampleSelect.addEventListener('change', () => {
 
 window.addEventListener('resize', doRender);
 
-// Load first example
 editor.value = EXAMPLES.hello;
 setTimeout(doRender, 100);
 </script>
